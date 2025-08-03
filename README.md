@@ -2,7 +2,7 @@
 
 # Overview:
 
-This challange/project demonstrates a Zero-downtime deployment strategy for an ASP.NET Core 8 Web API using:
+This challenge/project demonstrates a Zero-downtime deployment strategy for an ASP.NET Core 8 Web API using:
 
 - AWS ECS Fargate with Blue-Green deployment
 - Application Load Balancer (ALB) with dual Target Groups
@@ -57,12 +57,23 @@ This challange/project demonstrates a Zero-downtime deployment strategy for an A
 - [x] Pipeline documentation and full automation
 - [ ] Load testing (optional)
 
+# Running the Deployment:
+
+```bash
+# Manual apply with image tag
+cd infra
+terraform apply -auto-approve -var="image_tag=build-XxX"
+```
+
 # Source of research:
 
-| Site             | Link                                   |
-|------------------|-----------------------------------------------|
-| `Microsoft`      |  https://tinyurl.com/48cnjppb  |
+| Site             | Link                         |
+|------------------|------------------------------|
+| `Microsoft`      | https://tinyurl.com/48cnjppb |
 | `Medium`         | https://tinyurl.com/5csvswh7 |
 | `Amazon`         | https://tinyurl.com/n94br69x |
 | `AWS Regions`    | https://tinyurl.com/2x3mfnsh |
 | `Medium`         | https://tinyurl.com/ycxkyxwk |
+
+
+
