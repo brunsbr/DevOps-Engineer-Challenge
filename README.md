@@ -56,3 +56,13 @@ This challange/project demonstrates a Zero-downtime deployment strategy for an A
 - [x] Automated rollback within 60 seconds
 - [x] Pipeline documentation and full automation
 - [ ] Load testing (optional)
+
+# Source of research:
+
+| Site             | Link                                   |
+|------------------|-----------------------------------------------|
+| `Microsoft`      |  https://tinyurl.com/48cnjppb  |
+| `Medium`         | https://tinyurl.com/5csvswh7 |
+| `Amazon`         | https://tinyurl.com/n94br69x |
+| `AWS Regions`    | https://tinyurl.com/2x3mfnsh |
+| `Medium`         | https://tinyurl.com/ycxkyxwk |
