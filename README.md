@@ -74,6 +74,7 @@ terraform apply -auto-approve -var="image_tag=build-XxX"
 | `Amazon`         | https://tinyurl.com/n94br69x |
 | `AWS Regions`    | https://tinyurl.com/2x3mfnsh |
 | `Medium`         | https://tinyurl.com/ycxkyxwk |
+| `Terraform`      | https://tinyurl.com/4sjdnr33 |
 
 
 
