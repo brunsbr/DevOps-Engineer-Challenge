@@ -1,0 +1,112 @@
+# Azure Pipelines - configuration for Terraform
+# This pipeline builds a .NET application, creates a Docker image, pushes it to AWS ECR,
+# deploys it using Terraform, and performs a blue-green deployment with health checks. 
+# It also includes a rollback mechanism in case the health check fails.
+# The pipeline is triggered on changes to the main branch.
+
+trigger:
+- main
+variables:
+  awsRegion: 'eu-central-1'
+  imageName: 'aspnet-core-api'
+  ecrRepository: '<AWS_ACCOUNT_ID>.dkr.ecr.${{ variables.awsRegion }}.amazonaws.com/aspnet-core-api'
+  terraformWorkingDir: './infra'
+
+stages:
+# STAGE 1: Build & Test .NET
+- stage: Build
+  jobs:
+  - job: BuildApp
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '8.x'
+    
+    - script: |
+        dotnet build --configuration Release
+        dotnet test
+      displayName: 'Build and Test .NET App'
+
+# STAGE 2: Docker Build & Push to ECR
+- stage: Docker
+  dependsOn: Build
+  jobs:
+  - job: PushToECR
+    steps:
+    - script: |
+        aws ecr get-login-password --region ${{ variables.awsRegion }} | docker login --username AWS --password-stdin ${{ variables.ecrRepository }}
+        docker build -t ${{ variables.imageName }}:${{ Build.BuildId }} .
+        docker tag ${{ variables.imageName }}:${{ Build.BuildId }} ${{ variables.ecrRepository }}:${{ Build.BuildId }}
+        docker push ${{ variables.ecrRepository }}:${{ Build.BuildId }}
+      displayName: 'Build & Push Docker Image'
+
+## STAGE 3: Deploy GREEN version
+- stage: DeployGreen
+  dependsOn: Docker
+  jobs:
+  - job: TerraformDeployGreen
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: '1.5.7'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Apply (GREEN)'
+      inputs:
+        provider: 'aws'
+        command: 'apply'
+        workingDirectory: '$(terraformWorkingDir)'
+        environmentServiceNameAWS: 'AWS_Connection_Service' # It needs to be created in Azure DevOps
+        vars: |
+          image_tag=$(Build.BuildId)
+
+# STAGE 4: Health Check
+- stage: HealthCheck
+  dependsOn: DeployGreen
+  jobs:
+  - job: CheckHealth
+    steps:
+    - script: |
+        for i in {1..10}; do
+          status=$(curl -s -o /dev/null -w "%{http_code}" http://<ALB_DNS_NAME>/health)
+          echo "Attempt $i: $status"
+          if [ "$status" -eq 200 ]; then
+            echo "Health check passed"
+            exit 0
+          fi
+          sleep 6
+        done
+        echo "Health check failed"
+        exit 1
+      displayName: 'Run Health Check'
+
+# STAGE 5: Switch traffic to GREEN (Update ALB Listener)
+- stage: SwitchTraffic
+  dependsOn: HealthCheck
+  condition: succeeded()
+  jobs:
+  - job: SwitchToGreen
+    steps:
+    - script: |
+        echo "Switching ALB default action to GREEN target group"
+        terraform apply -auto-approve \
+          -var="image_tag=$(Build.BuildId)" \
+          -var="active_target_group=green"
+      displayName: 'Switch Traffic to GREEN'
+
+# STAGE 5b: Rollback to BLUE if Health Check fails
+- stage: Rollback
+  dependsOn: HealthCheck
+  condition: failed()  # It only runs if healthcheck fails
+  jobs:
+  - job: RollbackToBlue
+    steps:
+    - script: |
+        echo "Health check failed, switching back to BLUE"
+        terraform apply -auto-approve \
+          -var="image_tag=$(Build.BuildId)" \
+          -var="active_target_group=blue"
+      displayName: 'Rollback to BLUE target group'
